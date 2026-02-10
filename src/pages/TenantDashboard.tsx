@@ -1,135 +1,93 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { Home, Bell, User, LogOut, Heart, Calendar, Search, Menu, X } from "lucide-react";
+import { Home, Bell, User, LogOut, Heart, Calendar, Search, Menu, X, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import FilterBar from "@/components/properties/FilterBar";
 import PropertyCard from "@/components/properties/PropertyCard";
 import Footer from "@/components/layout/Footer";
-
-// Mock data for properties
-const mockProperties = [
-  {
-    id: "1",
-    title: "Modern 2BHK Apartment in Anna Nagar",
-    location: "Anna Nagar, Chennai",
-    price: 25000,
-    bhk: 2,
-    bathrooms: 2,
-    area: 1200,
-    imageUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=60",
-    rating: 4.5,
-    reviewCount: 28,
-    isAvailable: true,
-    amenities: ["Car Parking", "Furnished", "WiFi", "Gym"],
-  },
-  {
-    id: "2",
-    title: "Spacious 3BHK Villa with Garden",
-    location: "Velachery, Chennai",
-    price: 45000,
-    bhk: 3,
-    bathrooms: 3,
-    area: 2000,
-    imageUrl: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&auto=format&fit=crop&q=60",
-    rating: 4.8,
-    reviewCount: 45,
-    isAvailable: true,
-    amenities: ["Car Parking", "Garden", "Security", "Power Backup"],
-  },
-  {
-    id: "3",
-    title: "Cozy 1BHK Studio Apartment",
-    location: "T.Nagar, Chennai",
-    price: 15000,
-    bhk: 1,
-    bathrooms: 1,
-    area: 650,
-    imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=60",
-    rating: 4.2,
-    reviewCount: 18,
-    isAvailable: false,
-    amenities: ["Furnished", "WiFi", "Water Supply"],
-  },
-  {
-    id: "4",
-    title: "Luxury 4BHK Penthouse",
-    location: "OMR, Chennai",
-    price: 85000,
-    bhk: 4,
-    bathrooms: 4,
-    area: 3500,
-    imageUrl: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop&q=60",
-    rating: 4.9,
-    reviewCount: 62,
-    isAvailable: true,
-    amenities: ["Swimming Pool", "Gym", "Security", "Club House", "Car Parking"],
-  },
-  {
-    id: "5",
-    title: "Budget-Friendly 2BHK Flat",
-    location: "Adyar, Chennai",
-    price: 18000,
-    bhk: 2,
-    bathrooms: 1,
-    area: 900,
-    imageUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop&q=60",
-    rating: 4.0,
-    reviewCount: 12,
-    isAvailable: true,
-    amenities: ["Two Wheeler Parking", "Water Supply"],
-  },
-  {
-    id: "6",
-    title: "Premium 3BHK with Sea View",
-    location: "Besant Nagar, Chennai",
-    price: 55000,
-    bhk: 3,
-    bathrooms: 2,
-    area: 1800,
-    imageUrl: "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800&auto=format&fit=crop&q=60",
-    rating: 4.7,
-    reviewCount: 38,
-    isAvailable: true,
-    amenities: ["Sea View", "Furnished", "Gym", "Security", "Power Backup"],
-  },
-];
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const TenantDashboard = () => {
   const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<any>({});
 
-  const handleFavoriteToggle = (id: string) => {
-    setWishlist((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+  useEffect(() => {
+    fetchProperties();
+    if (user) fetchWishlist();
+  }, [user]);
+
+  const fetchProperties = async () => {
+    setLoading(true);
+    let query = supabase
+      .from("properties")
+      .select("*, property_images(image_url, display_order)")
+      .eq("is_available", true)
+      .order("created_at", { ascending: false });
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Error fetching properties:", error);
+    } else {
+      setProperties(data || []);
+    }
+    setLoading(false);
   };
 
-  const handleViewDetails = (id: string) => {
-    navigate(`/property/${id}`);
+  const fetchWishlist = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("wishlists")
+      .select("property_id")
+      .eq("user_id", user.id);
+    if (data) setWishlist(data.map((w) => w.property_id));
   };
 
-  const handleScheduleVisit = (id: string) => {
-    console.log("Schedule visit:", id);
+  const handleFavoriteToggle = async (id: string) => {
+    if (!user) {
+      toast.error("Please login to add to wishlist");
+      navigate("/login");
+      return;
+    }
+    const isFav = wishlist.includes(id);
+    if (isFav) {
+      await supabase.from("wishlists").delete().eq("user_id", user.id).eq("property_id", id);
+      setWishlist((prev) => prev.filter((item) => item !== id));
+      toast.success("Removed from wishlist");
+    } else {
+      await supabase.from("wishlists").insert({ user_id: user.id, property_id: id });
+      setWishlist((prev) => [...prev, id]);
+      toast.success("Added to wishlist");
+    }
   };
+
+  const handleViewDetails = (id: string) => navigate(`/property/${id}`);
+  const handleScheduleVisit = (id: string) => navigate(`/property/${id}`);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "User";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Dashboard Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
                 <Home className="w-5 h-5 text-primary-foreground" />
@@ -139,112 +97,57 @@ const TenantDashboard = () => {
               </span>
             </Link>
 
-            {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-6">
               <Link to="/tenant/dashboard" className="text-foreground font-medium flex items-center gap-2">
-                <Search className="w-4 h-4" />
-                Browse
+                <Search className="w-4 h-4" /> Browse
               </Link>
               <Link to="/tenant/wishlist" className="text-muted-foreground hover:text-foreground flex items-center gap-2">
-                <Heart className="w-4 h-4" />
-                Wishlist
+                <Heart className="w-4 h-4" /> Wishlist
                 {wishlist.length > 0 && (
                   <Badge className="h-5 w-5 p-0 flex items-center justify-center bg-accent text-accent-foreground text-xs">
                     {wishlist.length}
                   </Badge>
                 )}
               </Link>
-              <Link to="/tenant/visits" className="text-muted-foreground hover:text-foreground flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                My Visits
-              </Link>
             </nav>
 
-            {/* Right Actions */}
             <div className="flex items-center gap-3">
-              {/* Notifications */}
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
-              </Button>
-
-              {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                       <User className="w-4 h-4 text-primary" />
                     </div>
-                    <span className="hidden sm:block font-medium">John Doe</span>
+                    <span className="hidden sm:block font-medium">{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <User className="w-4 h-4 mr-2" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Heart className="w-4 h-4 mr-2" />
-                    Wishlist
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Calendar className="w-4 h-4 mr-2" />
-                    My Visits
+                  <DropdownMenuItem onClick={() => navigate("/tenant/wishlist")}>
+                    <Heart className="w-4 h-4 mr-2" /> Wishlist
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                  <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" /> Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
+              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
                 {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
             </div>
           </div>
 
-          {/* Mobile Nav */}
           {isMobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden py-4 border-t border-border"
-            >
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="md:hidden py-4 border-t border-border">
               <nav className="flex flex-col gap-2">
-                <Link
-                  to="/tenant/dashboard"
-                  className="px-4 py-2 rounded-lg bg-primary/10 text-primary font-medium flex items-center gap-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Search className="w-4 h-4" />
-                  Browse
+                <Link to="/tenant/dashboard" className="px-4 py-2 rounded-lg bg-primary/10 text-primary font-medium flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Search className="w-4 h-4" /> Browse
                 </Link>
-                <Link
-                  to="/tenant/wishlist"
-                  className="px-4 py-2 rounded-lg hover:bg-secondary text-foreground flex items-center gap-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Heart className="w-4 h-4" />
-                  Wishlist ({wishlist.length})
-                </Link>
-                <Link
-                  to="/tenant/visits"
-                  className="px-4 py-2 rounded-lg hover:bg-secondary text-foreground flex items-center gap-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Calendar className="w-4 h-4" />
-                  My Visits
+                <Link to="/tenant/wishlist" className="px-4 py-2 rounded-lg hover:bg-secondary text-foreground flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Heart className="w-4 h-4" /> Wishlist ({wishlist.length})
                 </Link>
               </nav>
             </motion.div>
@@ -252,69 +155,60 @@ const TenantDashboard = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-            Welcome back, John! 👋
+            Welcome{user ? `, ${displayName}` : ""}! 👋
           </h1>
-          <p className="text-muted-foreground">
-            Find your perfect rental home from our verified listings
-          </p>
+          <p className="text-muted-foreground">Find your perfect rental home from our verified listings</p>
         </motion.div>
 
-        {/* Filter Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
           <FilterBar />
         </motion.div>
 
-        {/* Results Count */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground">
-            Showing <span className="text-foreground font-semibold">{mockProperties.length}</span> properties
+            Showing <span className="text-foreground font-semibold">{properties.length}</span> properties
           </p>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Sort by:</span>
-            <select className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm">
-              <option>Relevance</option>
-              <option>Price: Low to High</option>
-              <option>Price: High to Low</option>
-              <option>Newest First</option>
-              <option>Rating</option>
-            </select>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-20">
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full mx-auto" />
+            <p className="text-muted-foreground mt-4">Loading properties...</p>
           </div>
-        </div>
-
-        {/* Property Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockProperties.map((property) => (
-            <PropertyCard
-              key={property.id}
-              {...property}
-              isFavorite={wishlist.includes(property.id)}
-              onFavoriteToggle={handleFavoriteToggle}
-              onViewDetails={handleViewDetails}
-              onScheduleVisit={handleScheduleVisit}
-            />
-          ))}
-        </div>
-
-        {/* Load More */}
-        <div className="flex justify-center mt-12">
-          <Button variant="outline" size="lg" className="rounded-full px-8">
-            Load More Properties
-          </Button>
-        </div>
+        ) : properties.length === 0 ? (
+          <div className="text-center py-20">
+            <Home className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">No properties found</h2>
+            <p className="text-muted-foreground">Properties will appear here once owners list them.</p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {properties.map((property) => (
+              <PropertyCard
+                key={property.id}
+                id={property.id}
+                title={property.title}
+                location={`${property.location}, ${property.city}`}
+                price={property.price_per_month}
+                bhk={property.bhk}
+                bathrooms={2}
+                area={1200}
+                imageUrl={property.property_images?.[0]?.image_url || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=60"}
+                rating={4.5}
+                reviewCount={0}
+                isAvailable={property.is_available}
+                amenities={property.amenities || []}
+                isFavorite={wishlist.includes(property.id)}
+                onFavoriteToggle={handleFavoriteToggle}
+                onViewDetails={handleViewDetails}
+                onScheduleVisit={handleScheduleVisit}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       <Footer />

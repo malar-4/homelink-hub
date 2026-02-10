@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 type UserRole = "tenant" | "owner" | "admin";
 
@@ -19,21 +20,10 @@ const LoginPage = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    role: "tenant" as UserRole,
   });
-
-  const roles = [
-    { id: "tenant", title: "Tenant", icon: User, color: "bg-blue-500" },
-    { id: "owner", title: "Owner", icon: Building, color: "bg-green-500" },
-    { id: "admin", title: "Admin", icon: Shield, color: "bg-purple-500" },
-  ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleRoleChange = (value: string) => {
-    setFormData({ ...formData, role: value as UserRole });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,14 +32,26 @@ const LoginPage = () => {
 
     try {
       await signIn(formData.email, formData.password);
-      toast.success(`Welcome back! Logged in successfully`);
       
-      if (formData.role === "admin") {
-        navigate("/admin/dashboard");
-      } else if (formData.role === "owner") {
-        navigate("/owner/dashboard");
-      } else {
-        navigate("/tenant/dashboard");
+      // Fetch user role from DB
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        toast.success("Welcome back! Logged in successfully");
+        
+        const role = roleData?.role || "tenant";
+        if (role === "admin") {
+          navigate("/admin/dashboard");
+        } else if (role === "owner") {
+          navigate("/owner/dashboard");
+        } else {
+          navigate("/tenant/dashboard");
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "Login failed. Please check your credentials.");
@@ -107,22 +109,6 @@ const LoginPage = () => {
           <p className="text-muted-foreground mb-8">Welcome back! Please enter your details</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Role Selection */}
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Login as:</Label>
-              <RadioGroup value={formData.role} onValueChange={handleRoleChange} className="flex gap-3">
-                {roles.map((role) => (
-                  <label key={role.id} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.role === role.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
-                    <RadioGroupItem value={role.id} className="sr-only" />
-                    <div className={`w-10 h-10 ${role.color} rounded-lg flex items-center justify-center`}>
-                      <role.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">{role.title}</span>
-                  </label>
-                ))}
-              </RadioGroup>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
@@ -134,7 +120,6 @@ const LoginPage = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link to="/forgot-password" className="text-sm text-primary hover:underline">Forgot password?</Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
