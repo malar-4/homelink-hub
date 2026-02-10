@@ -170,10 +170,12 @@ const OwnerDashboard = () => {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3">
-              <Button className="rounded-full bg-accent hover:bg-accent/90 text-accent-foreground hidden sm:flex">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Property
-              </Button>
+              <Link to="/owner/add-property">
+                <Button className="rounded-full bg-accent hover:bg-accent/90 text-accent-foreground hidden sm:flex">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Property
+                </Button>
+              </Link>
 
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative">
@@ -273,10 +275,12 @@ const OwnerDashboard = () => {
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>My Properties</CardTitle>
-                <Button className="rounded-full bg-accent hover:bg-accent/90">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Property
-                </Button>
+                <Link to="/owner/add-property">
+                  <Button className="rounded-full bg-accent hover:bg-accent/90">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Property
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
