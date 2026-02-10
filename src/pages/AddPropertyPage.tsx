@@ -12,14 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import Footer from "@/components/layout/Footer";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const allAmenities = [
   "Car Parking", "Two Wheeler Parking", "Furnished", "Semi-Furnished",
@@ -28,9 +26,17 @@ const allAmenities = [
   "Children's Play Area", "Intercom", "Fire Safety", "Visitor Parking"
 ];
 
+const tamilNaduCities = [
+  "Chennai", "Coimbatore", "Madurai", "Trichy", "Salem", "Tirunelveli",
+  "Erode", "Vellore", "Thoothukudi", "Thanjavur", "Dindigul", "Nagercoil",
+  "Hosur", "Kanchipuram", "Karur", "Tirupur", "Cuddalore", "Kumbakonam",
+];
+
 const AddPropertyPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: "",
@@ -41,8 +47,6 @@ const AddPropertyPage = () => {
     city: "",
     location: "",
     address: "",
-    area: "",
-    bathrooms: "",
     amenities: [] as string[],
   });
 
@@ -62,48 +66,92 @@ const AddPropertyPage = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const newPreviews = Array.from(files).map((file) => URL.createObjectURL(file));
+    const newFiles = Array.from(files);
+    setImageFiles((prev) => [...prev, ...newFiles]);
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
     setPreviewImages((prev) => [...prev, ...newPreviews]);
   };
 
   const removeImage = (index: number) => {
     setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) { toast.error("Please login first"); navigate("/login"); return; }
     if (!formData.title || !formData.price || !formData.city || !formData.location || !formData.bhk) {
       toast.error("Please fill in all required fields");
       return;
     }
+
     setIsSubmitting(true);
-    // Mock submit - will be replaced with real Supabase call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Insert property
+      const { data: property, error: propError } = await supabase
+        .from("properties")
+        .insert({
+          title: formData.title,
+          description: formData.description || null,
+          property_type: formData.propertyType || "2BHK",
+          bhk: parseInt(formData.bhk),
+          price_per_month: parseInt(formData.price),
+          city: formData.city,
+          location: formData.location,
+          address: formData.address || null,
+          amenities: formData.amenities,
+          owner_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (propError) throw propError;
+
+      // Upload images
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const filePath = `${user.id}/${property.id}/${Date.now()}_${file.name}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("property-images")
+          .upload(filePath, file);
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from("property-images")
+            .getPublicUrl(filePath);
+
+          await supabase.from("property_images").insert({
+            property_id: property.id,
+            image_url: urlData.publicUrl,
+            display_order: i,
+          });
+        }
+      }
+
       toast.success("Property listed successfully!");
       navigate("/owner/dashboard");
-    }, 1500);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to list property");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Link to="/owner/dashboard">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
+                <Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button>
               </Link>
               <Link to="/" className="flex items-center gap-2">
                 <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
                   <Home className="w-5 h-5 text-primary-foreground" />
                 </div>
-                <span className="text-xl font-bold text-foreground hidden sm:block">
-                  Quick<span className="text-accent">Rent</span>
-                </span>
+                <span className="text-xl font-bold text-foreground hidden sm:block">Quick<span className="text-accent">Rent</span></span>
               </Link>
             </div>
             <span className="font-semibold text-foreground">Add New Property</span>
@@ -113,12 +161,8 @@ const AddPropertyPage = () => {
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-            List Your Property 🏠
-          </h1>
-          <p className="text-muted-foreground">
-            Fill in the details to list your property on QuickRent
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">List Your Property 🏠</h1>
+          <p className="text-muted-foreground">Fill in the details to list your property on QuickRent</p>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -126,11 +170,7 @@ const AddPropertyPage = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-primary" />
-                  Basic Details
-                </CardTitle>
-                <CardDescription>Provide the basic information about your property</CardDescription>
+                <CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5 text-primary" /> Basic Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -147,11 +187,11 @@ const AddPropertyPage = () => {
                     <Select value={formData.propertyType} onValueChange={(v) => setFormData({ ...formData, propertyType: v })}>
                       <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select type" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="apartment">Apartment</SelectItem>
-                        <SelectItem value="independent-house">Independent House</SelectItem>
-                        <SelectItem value="villa">Villa</SelectItem>
-                        <SelectItem value="pg">PG/Hostel</SelectItem>
-                        <SelectItem value="studio">Studio</SelectItem>
+                        <SelectItem value="Apartment">Apartment</SelectItem>
+                        <SelectItem value="Independent House">Independent House</SelectItem>
+                        <SelectItem value="Villa">Villa</SelectItem>
+                        <SelectItem value="PG/Hostel">PG/Hostel</SelectItem>
+                        <SelectItem value="Studio">Studio</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -169,16 +209,6 @@ const AddPropertyPage = () => {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="area">Area (sqft)</Label>
-                    <Input id="area" name="area" type="number" placeholder="e.g., 1200" value={formData.area} onChange={handleChange} className="rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bathrooms">Bathrooms</Label>
-                    <Input id="bathrooms" name="bathrooms" type="number" placeholder="e.g., 2" value={formData.bathrooms} onChange={handleChange} className="rounded-xl" />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -187,16 +217,20 @@ const AddPropertyPage = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  Location & Pricing
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2"><MapPin className="w-5 h-5 text-primary" /> Location & Pricing</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="city">City *</Label>
-                    <Input id="city" name="city" placeholder="e.g., Chennai" value={formData.city} onChange={handleChange} className="rounded-xl" required />
+                    <Label>City *</Label>
+                    <Select value={formData.city} onValueChange={(v) => setFormData({ ...formData, city: v })}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select city" /></SelectTrigger>
+                      <SelectContent>
+                        {tamilNaduCities.map((city) => (
+                          <SelectItem key={city} value={city}>{city}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="location">Area/Locality *</Label>
@@ -222,10 +256,7 @@ const AddPropertyPage = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Image className="w-5 h-5 text-primary" />
-                  Property Images
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2"><Image className="w-5 h-5 text-primary" /> Property Images</CardTitle>
                 <CardDescription>Upload high-quality images of your property</CardDescription>
               </CardHeader>
               <CardContent>
@@ -258,13 +289,11 @@ const AddPropertyPage = () => {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {allAmenities.map((amenity) => (
-                    <div
-                      key={amenity}
+                    <div key={amenity}
                       className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                         formData.amenities.includes(amenity) ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
                       }`}
-                      onClick={() => handleAmenityToggle(amenity)}
-                    >
+                      onClick={() => handleAmenityToggle(amenity)}>
                       <Checkbox checked={formData.amenities.includes(amenity)} onCheckedChange={() => handleAmenityToggle(amenity)} />
                       <span className="text-sm">{amenity}</span>
                     </div>
@@ -277,17 +306,12 @@ const AddPropertyPage = () => {
           {/* Submit */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <div className="flex gap-4">
-              <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => navigate("/owner/dashboard")}>
-                Cancel
-              </Button>
+              <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => navigate("/owner/dashboard")}>Cancel</Button>
               <Button type="submit" className="flex-1 h-12 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full" />
                 ) : (
-                  <>
-                    <Upload className="w-5 h-5 mr-2" />
-                    List Property
-                  </>
+                  <><Upload className="w-5 h-5 mr-2" /> List Property</>
                 )}
               </Button>
             </div>
