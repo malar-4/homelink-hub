@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Home, Bell, User, LogOut, Heart, Calendar, Search, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -105,6 +105,7 @@ const mockProperties = [
 ];
 
 const TenantDashboard = () => {
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [wishlist, setWishlist] = useState<string[]>([]);
 
@@ -115,7 +116,7 @@ const TenantDashboard = () => {
   };
 
   const handleViewDetails = (id: string) => {
-    console.log("View details:", id);
+    navigate(`/property/${id}`);
   };
 
   const handleScheduleVisit = (id: string) => {
