@@ -124,7 +124,11 @@ const LoginPage = () => {
             </Button>
           </form>
 
-          <p className="text-center text-muted-foreground mt-8 text-sm">
+          <div className="text-center mt-6">
+            <Link to="/forgot-password" className="text-sm text-accent font-semibold hover:underline">Forgot your password?</Link>
+          </div>
+
+          <p className="text-center text-muted-foreground mt-4 text-sm">
             Don't have an account?{" "}
             <Link to="/register" className="text-primary font-semibold hover:underline">Create Account</Link>
           </p>
