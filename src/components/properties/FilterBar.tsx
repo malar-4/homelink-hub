@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, Home, IndianRupee, SlidersHorizontal, X, Car, Sofa, Wifi, Dumbbell, Shield, Droplets } from "lucide-react";
+import { Search, Home, IndianRupee, SlidersHorizontal, X, Car, Sofa, Wifi, Dumbbell, Shield, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet";
+import LocationAutocomplete from "./LocationAutocomplete";
 
 interface FilterBarProps {
   onFilterChange?: (filters: FilterState) => void;
@@ -37,49 +38,6 @@ const amenitiesList = [
   { id: "water-supply", label: "Water Supply", icon: Droplets },
 ];
 
-// Comprehensive India-wide locations
-const locations = [
-  // Tamil Nadu
-  "Chennai - T.Nagar", "Chennai - Anna Nagar", "Chennai - Velachery", "Chennai - OMR",
-  "Chennai - Adyar", "Chennai - Besant Nagar", "Chennai - Porur", "Chennai - Tambaram",
-  "Chennai - Guindy", "Chennai - Mylapore", "Chennai - Nungambakkam", "Chennai - Alwarpet",
-  "Chennai - Perambur", "Chennai - Sholinganallur", "Chennai - Thiruvanmiyur",
-  "Coimbatore - RS Puram", "Coimbatore - Gandhipuram", "Coimbatore - Peelamedu",
-  "Coimbatore - Saravanampatti", "Coimbatore - Singanallur",
-  "Madurai - Anna Nagar", "Madurai - KK Nagar", "Madurai - Thirunagar",
-  "Trichy - Cantonment", "Trichy - Thillai Nagar", "Trichy - Srirangam",
-  "Salem - Hasthampatti", "Salem - Fairlands",
-  "Tirunelveli - Palayamkottai", "Tirunelveli - Junction",
-  "Erode - Perundurai", "Vellore - Katpadi",
-  "Tirupur - Avinashi Road", "Thanjavur - Medical College Road",
-  "Hosur - Industrial Area", "Kanchipuram - Town",
-  // Karnataka
-  "Bangalore - Whitefield", "Bangalore - Koramangala", "Bangalore - HSR Layout",
-  "Bangalore - Indiranagar", "Bangalore - Electronic City", "Bangalore - Jayanagar",
-  "Bangalore - BTM Layout", "Bangalore - Marathahalli",
-  "Mysore - Vijayanagar", "Mysore - Gokulam",
-  // Maharashtra
-  "Mumbai - Andheri", "Mumbai - Bandra", "Mumbai - Powai", "Mumbai - Thane",
-  "Mumbai - Navi Mumbai", "Mumbai - Dadar", "Mumbai - Worli",
-  "Pune - Hinjewadi", "Pune - Kharadi", "Pune - Viman Nagar", "Pune - Koregaon Park",
-  // Telangana
-  "Hyderabad - Gachibowli", "Hyderabad - Hitec City", "Hyderabad - Madhapur",
-  "Hyderabad - Kondapur", "Hyderabad - Banjara Hills", "Hyderabad - Jubilee Hills",
-  // Delhi NCR
-  "Delhi - Dwarka", "Delhi - Saket", "Delhi - Rohini", "Delhi - Vasant Kunj",
-  "Gurgaon - Sector 56", "Gurgaon - DLF Phase", "Noida - Sector 62", "Noida - Sector 137",
-  // Kerala
-  "Kochi - Edappally", "Kochi - Kakkanad", "Kochi - Marine Drive",
-  "Thiruvananthapuram - Technopark", "Calicut - Beach Road",
-  // Andhra Pradesh
-  "Vijayawada - Benz Circle", "Visakhapatnam - MVP Colony",
-  // Others
-  "Kolkata - Salt Lake", "Kolkata - New Town",
-  "Ahmedabad - SG Highway", "Ahmedabad - Prahlad Nagar",
-  "Jaipur - Malviya Nagar", "Jaipur - Vaishali Nagar",
-  "Lucknow - Gomti Nagar", "Chandigarh - Sector 17",
-  "Indore - Vijay Nagar", "Bhopal - MP Nagar",
-];
 
 const FilterBar = ({ onFilterChange }: FilterBarProps) => {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -110,16 +68,12 @@ const FilterBar = ({ onFilterChange }: FilterBarProps) => {
   return (
     <div className="bg-card rounded-2xl shadow-lg border border-border p-4">
       <div className="flex flex-col lg:flex-row gap-4">
-        <div className="flex-1 relative">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary z-10" />
-          <Select value={filters.location} onValueChange={(value) => setFilters({ ...filters, location: value })}>
-            <SelectTrigger className="pl-10 h-12 rounded-xl border-border"><SelectValue placeholder="Search location across India..." /></SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              {locations.map((loc) => (
-                <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex-1">
+          <LocationAutocomplete
+            value={filters.location}
+            onChange={(value) => setFilters({ ...filters, location: value })}
+            placeholder="Search any location in India..."
+          />
         </div>
 
         <div className="w-full lg:w-40">
