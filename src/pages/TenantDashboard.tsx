@@ -74,7 +74,9 @@ const TenantDashboard = () => {
   };
 
   const handleViewDetails = (id: string) => navigate(`/property/${id}`);
-  const handleScheduleVisit = (id: string) => navigate(`/property/${id}`);
+  const handleScheduleVisit = (id: string) => {
+    navigate(`/property/${id}?schedule=true`);
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -124,6 +126,9 @@ const TenantDashboard = () => {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    <User className="w-4 h-4 mr-2" /> Edit Profile
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/tenant/wishlist")}>
                     <Heart className="w-4 h-4 mr-2" /> Wishlist
                   </DropdownMenuItem>

@@ -222,6 +222,10 @@ const OwnerDashboard = () => {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Property Owner</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    <Edit className="w-4 h-4 mr-2" /> Edit Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" /> Logout
                   </DropdownMenuItem>

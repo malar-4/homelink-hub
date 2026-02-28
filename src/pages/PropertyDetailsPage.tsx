@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Home, MapPin, Bed, Bath, Square, Star, Calendar, Heart,
@@ -29,6 +29,7 @@ const amenityIcons: Record<string, any> = {
 const PropertyDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [property, setProperty] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -45,6 +46,13 @@ const PropertyDetailsPage = () => {
   useEffect(() => {
     if (id) fetchProperty();
   }, [id]);
+
+  // Auto-open schedule dialog when coming from Schedule button
+  useEffect(() => {
+    if (searchParams.get("schedule") === "true" && property && !loading) {
+      setIsScheduleOpen(true);
+    }
+  }, [searchParams, property, loading]);
 
   useEffect(() => {
     if (user && id) checkWishlist();
@@ -119,6 +127,13 @@ const PropertyDetailsPage = () => {
     if (error) {
       toast.error("Failed to schedule visit");
     } else {
+      // Send notification message to owner
+      await supabase.from("messages").insert({
+        sender_id: user.id,
+        receiver_id: property.owner_id,
+        property_id: id!,
+        content: `🏠 New visit request for "${property.title}" on ${visitDate} at ${visitTime}.${visitMessage ? ` Message: ${visitMessage}` : ""}`,
+      });
       toast.success("Visit request sent to the owner!");
       setIsScheduleOpen(false);
       setVisitDate("");
