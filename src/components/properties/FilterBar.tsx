@@ -89,12 +89,22 @@ const FilterBar = ({ onFilterChange }: FilterBarProps) => {
           </Select>
         </div>
 
-        <div className="w-full lg:w-64">
-          <div className="flex items-center gap-2 h-12 px-4 rounded-xl border border-border bg-background">
-            <IndianRupee className="w-5 h-5 text-primary" />
-            <span className="text-sm font-medium whitespace-nowrap">
-              {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
-            </span>
+        <div className="w-full lg:w-72">
+          <div className="flex flex-col gap-1 h-12 px-4 rounded-xl border border-border bg-background justify-center">
+            <div className="flex items-center justify-between">
+              <IndianRupee className="w-4 h-4 text-primary" />
+              <span className="text-xs font-medium text-muted-foreground">
+                {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
+              </span>
+            </div>
+            <Slider
+              value={priceRange}
+              onValueChange={setPriceRange}
+              min={1000}
+              max={200000}
+              step={1000}
+              className="w-full"
+            />
           </div>
         </div>
 
