@@ -30,8 +30,8 @@
     --muted: 35 20% 92%;
     --muted-foreground: 220 10% 45%;
 
-    /* Accent - Coral/Orange (Warmth, Energy) */
-    --accent: 16 85% 57%;
+    /* Accent - Sky Blue (Trust, Clarity) */
+    --accent: 210 75% 52%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive */
@@ -48,8 +48,8 @@
     /* Custom QuickRent Colors */
     --quickrent-teal: 173 58% 39%;
     --quickrent-teal-light: 173 45% 92%;
-    --quickrent-coral: 16 85% 57%;
-    --quickrent-coral-light: 16 85% 95%;
+    --quickrent-coral: 210 75% 52%;
+    --quickrent-coral-light: 210 75% 95%;
     --quickrent-gold: 38 92% 50%;
     --quickrent-navy: 220 40% 20%;
     --quickrent-success: 152 69% 40%;
@@ -57,7 +57,7 @@
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(173 58% 39%) 0%, hsl(173 58% 30%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(16 85% 57%) 0%, hsl(16 85% 47%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(210 75% 52%) 0%, hsl(210 75% 42%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(173 58% 39%) 0%, hsl(190 60% 35%) 50%, hsl(173 58% 30%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(35 30% 98%) 100%);
 
@@ -98,7 +98,7 @@
     --muted: 220 20% 18%;
     --muted-foreground: 220 10% 60%;
 
-    --accent: 16 85% 60%;
+    --accent: 210 75% 58%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 50%;
