@@ -62,6 +62,36 @@ export type Database = {
           },
         ]
       }
+      owner_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          expires_at: string
+          id: string
+          owner_id: string
+          paid_at: string
+          status: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          expires_at?: string
+          id?: string
+          owner_id: string
+          paid_at?: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          expires_at?: string
+          id?: string
+          owner_id?: string
+          paid_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
