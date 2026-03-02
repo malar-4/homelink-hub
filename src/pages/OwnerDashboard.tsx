@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { 
   Home, Bell, User, LogOut, Plus, Building, Calendar, 
   BarChart3, IndianRupee, Menu, X, Edit, Trash2, Eye,
-  CheckCircle, XCircle, Clock, MessageSquare, Send
+  CheckCircle, XCircle, Clock, MessageSquare, Send, CreditCard, Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,13 +45,50 @@ const OwnerDashboard = () => {
   const [replyMessage, setReplyMessage] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
+  const [hasPaid, setHasPaid] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(true);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchProperties();
       fetchVisits();
+      checkPaymentStatus();
     }
   }, [user]);
+
+  const checkPaymentStatus = async () => {
+    if (!user) return;
+    setPaymentLoading(true);
+    const { data } = await supabase
+      .from("owner_payments")
+      .select("id, expires_at")
+      .eq("owner_id", user.id)
+      .eq("status", "completed")
+      .gte("expires_at", new Date().toISOString())
+      .maybeSingle();
+    setHasPaid(!!data);
+    setPaymentLoading(false);
+  };
+
+  const handleMockPayment = async () => {
+    if (!user) return;
+    setIsProcessingPayment(true);
+    try {
+      const { error } = await supabase.from("owner_payments").insert({
+        owner_id: user.id,
+        amount: 1,
+        status: "completed",
+      });
+      if (error) throw error;
+      setHasPaid(true);
+      toast.success("Payment of ₹1 successful! You can now list properties and contact tenants.");
+    } catch (err: any) {
+      toast.error(err.message || "Payment failed");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   const fetchProperties = async () => {
     if (!user) return;
@@ -204,11 +241,17 @@ const OwnerDashboard = () => {
             </nav>
 
             <div className="flex items-center gap-3">
-              <Link to="/owner/add-property">
-                <Button className="rounded-full bg-accent hover:bg-accent/90 text-accent-foreground hidden sm:flex">
+              {hasPaid ? (
+                <Link to="/owner/add-property">
+                  <Button className="rounded-full bg-accent hover:bg-accent/90 text-accent-foreground hidden sm:flex">
+                    <Plus className="w-4 h-4 mr-2" /> Add Property
+                  </Button>
+                </Link>
+              ) : (
+                <Button className="rounded-full bg-accent hover:bg-accent/90 text-accent-foreground hidden sm:flex" onClick={() => toast.error("Please complete ₹1 payment first to list properties")}>
                   <Plus className="w-4 h-4 mr-2" /> Add Property
                 </Button>
-              </Link>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -246,6 +289,44 @@ const OwnerDashboard = () => {
           <p className="text-muted-foreground">Manage your properties and handle visit requests</p>
         </motion.div>
 
+        {/* Payment Gate Banner */}
+        {!paymentLoading && !hasPaid && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
+            <Card className="border-accent bg-accent/5">
+              <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-accent/10 rounded-2xl flex items-center justify-center">
+                    <CreditCard className="w-7 h-7 text-accent" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Activate Your Owner Account</h3>
+                    <p className="text-muted-foreground text-sm">Pay a nominal fee of <span className="font-bold text-accent">₹1/month</span> to list properties and contact tenants</p>
+                  </div>
+                </div>
+                <Button
+                  className="rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground h-12 px-8 font-semibold"
+                  onClick={handleMockPayment}
+                  disabled={isProcessingPayment}
+                >
+                  {isProcessingPayment ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full" />
+                  ) : (
+                    <><IndianRupee className="w-4 h-4 mr-2" /> Pay ₹1 Now</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {hasPaid && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4">
+            <div className="flex items-center gap-2 text-sm text-quickrent-success">
+              <Shield className="w-4 h-4" /> Subscription active — you can list properties and contact tenants
+            </div>
+          </motion.div>
+        )}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, index) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
@@ -269,11 +350,17 @@ const OwnerDashboard = () => {
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>My Properties</CardTitle>
-                <Link to="/owner/add-property">
-                  <Button className="rounded-full bg-accent hover:bg-accent/90">
+                {hasPaid ? (
+                  <Link to="/owner/add-property">
+                    <Button className="rounded-full bg-accent hover:bg-accent/90">
+                      <Plus className="w-4 h-4 mr-2" /> Add Property
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button className="rounded-full bg-accent hover:bg-accent/90" onClick={() => toast.error("Please complete ₹1 payment first")}>
                     <Plus className="w-4 h-4 mr-2" /> Add Property
                   </Button>
-                </Link>
+                )}
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -382,7 +469,7 @@ const OwnerDashboard = () => {
                             <TableCell>{visit.proposed_time}</TableCell>
                             <TableCell>{getVisitStatusBadge(visit.status)}</TableCell>
                             <TableCell>
-                              {visit.status === "pending" && (
+                              {visit.status === "pending" && hasPaid && (
                                 <div className="flex items-center gap-2">
                                   <Button size="sm" className="bg-quickrent-success hover:bg-quickrent-success/90" onClick={() => handleVisitAction(visit.id, "accepted")}>
                                     <CheckCircle className="w-3 h-3 mr-1" /> Accept
@@ -394,6 +481,9 @@ const OwnerDashboard = () => {
                                     <MessageSquare className="w-3 h-3 mr-1" /> Reschedule
                                   </Button>
                                 </div>
+                              )}
+                              {visit.status === "pending" && !hasPaid && (
+                                <span className="text-xs text-muted-foreground">Pay ₹1 to respond</span>
                               )}
                             </TableCell>
                           </TableRow>

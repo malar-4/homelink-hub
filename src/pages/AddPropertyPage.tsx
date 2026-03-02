@@ -80,6 +80,22 @@ const AddPropertyPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) { toast.error("Please login first"); navigate("/login"); return; }
+    
+    // Check payment status
+    const { data: payment } = await supabase
+      .from("owner_payments")
+      .select("id")
+      .eq("owner_id", user.id)
+      .eq("status", "completed")
+      .gte("expires_at", new Date().toISOString())
+      .maybeSingle();
+    
+    if (!payment) {
+      toast.error("Please complete ₹1 payment on your dashboard before listing properties");
+      navigate("/owner/dashboard");
+      return;
+    }
+    
     if (!formData.title || !formData.price || !formData.city || !formData.location || !formData.bhk) {
       toast.error("Please fill in all required fields");
       return;
