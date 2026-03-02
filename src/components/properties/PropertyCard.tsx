@@ -65,9 +65,10 @@ const PropertyCard = ({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
-      className="property-card bg-card rounded-2xl overflow-hidden shadow-md border border-border"
+      className="property-card bg-card rounded-2xl overflow-hidden shadow-md border border-border cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onViewDetails?.(id)}
     >
       {/* Image Container */}
       <div className="relative h-52 overflow-hidden">
