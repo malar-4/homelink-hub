@@ -186,7 +186,8 @@ const FilterBar = ({ onFilterChange }: FilterBarProps) => {
           </SheetContent>
         </Sheet>
 
-        <Button className="h-12 px-8 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button className="h-12 px-8 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground"
+          onClick={() => onFilterChange?.({ ...filters, priceMin: priceRange[0], priceMax: priceRange[1] })}>
           <Search className="w-5 h-5 mr-2" /> Search
         </Button>
       </div>

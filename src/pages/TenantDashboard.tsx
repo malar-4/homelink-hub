@@ -15,6 +15,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+interface FilterState {
+  location: string;
+  bhk: string;
+  priceMin: number;
+  priceMax: number;
+  amenities: string[];
+  propertyType: string;
+  furnishing: string;
+}
+
 const TenantDashboard = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
@@ -22,20 +32,50 @@ const TenantDashboard = () => {
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<any>({});
+  const [activeFilters, setActiveFilters] = useState<FilterState | null>(null);
 
   useEffect(() => {
     fetchProperties();
     if (user) fetchWishlist();
   }, [user]);
 
-  const fetchProperties = async () => {
+  useEffect(() => {
+    fetchProperties(activeFilters);
+  }, [activeFilters]);
+
+  const fetchProperties = async (filters?: FilterState | null) => {
     setLoading(true);
     let query = supabase
       .from("properties")
       .select("*, property_images(image_url, display_order)")
       .eq("is_available", true)
       .order("created_at", { ascending: false });
+
+    if (filters) {
+      if (filters.location) {
+        query = query.or(`location.ilike.%${filters.location}%,city.ilike.%${filters.location}%,address.ilike.%${filters.location}%`);
+      }
+      if (filters.bhk) {
+        const bhkVal = filters.bhk === "5+" ? 5 : parseInt(filters.bhk);
+        if (filters.bhk === "5+") {
+          query = query.gte("bhk", bhkVal);
+        } else {
+          query = query.eq("bhk", bhkVal);
+        }
+      }
+      if (filters.priceMin) {
+        query = query.gte("price_per_month", filters.priceMin);
+      }
+      if (filters.priceMax) {
+        query = query.lte("price_per_month", filters.priceMax);
+      }
+      if (filters.propertyType) {
+        query = query.eq("property_type", filters.propertyType);
+      }
+      if (filters.amenities && filters.amenities.length > 0) {
+        query = query.contains("amenities", filters.amenities);
+      }
+    }
 
     const { data, error } = await query;
     if (error) {
@@ -76,6 +116,10 @@ const TenantDashboard = () => {
   const handleViewDetails = (id: string) => navigate(`/property/${id}`);
   const handleScheduleVisit = (id: string) => {
     navigate(`/property/${id}?schedule=true`);
+  };
+
+  const handleFilterChange = (filters: FilterState) => {
+    setActiveFilters(filters);
   };
 
   const handleLogout = async () => {
@@ -169,7 +213,7 @@ const TenantDashboard = () => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
-          <FilterBar />
+          <FilterBar onFilterChange={handleFilterChange} />
         </motion.div>
 
         <div className="flex items-center justify-between mb-6">
@@ -187,7 +231,7 @@ const TenantDashboard = () => {
           <div className="text-center py-20">
             <Home className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No properties found</h2>
-            <p className="text-muted-foreground">Properties will appear here once owners list them.</p>
+            <p className="text-muted-foreground">Try adjusting your filters or search for a different location.</p>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
